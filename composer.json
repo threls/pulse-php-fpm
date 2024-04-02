@@ -1,5 +1,5 @@
 {
-    "name": "maantje/pulse-php-fpm",
+    "name": "threls/pulse-php-fpm",
     "description": "A Laravel Pulse card to show php-fpm status",
     "type": "library",
     "license": "MIT",
