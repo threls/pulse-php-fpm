@@ -7,6 +7,7 @@ use hollodotme\FastCGI\Requests\GetRequest;
 use hollodotme\FastCGI\SocketConnections\NetworkSocket;
 use hollodotme\FastCGI\SocketConnections\UnixDomainSocket;
 use Illuminate\Config\Repository;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use JsonException;
 use Laravel\Pulse\Events\SharedBeat;
@@ -60,26 +61,18 @@ class PhpFpmRecorder
     {
         [$sock, $url] = $this->fpmConnectionInfo();
 
-        $response = $this->sendRequest($sock, $url);
-
-        return json_decode( $response->getBody(), true, flags: JSON_THROW_ON_ERROR);
+        return $this->sendRequest($sock, $url);
     }
 
     private function sendRequest($sock, $url)
     {
-        $client = new Client();
-
-        $request = new GetRequest($url['path'].'?json', '');
-
         if ($sock) {
-            $connection = new UnixDomainSocket($sock);
-
-            return $client->sendRequest($connection, $request);
+           throw new RuntimeException('Sockets are currently not supported');
         }
 
-        $connection = new NetworkSocket($url['host'], $url['port']);
+        $response = Http::get('http://'. $url['host'] . ':'. $url['port'].'?json');
 
-        return $client->sendRequest($connection, $request);
+        return $response->json();
     }
 
     private function fpmConnectionInfo(): array
