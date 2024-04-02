@@ -2,7 +2,10 @@
 
 namespace Maantje\Pulse\PhpFpm\Recorders;
 
-use Adoy\FastCGI\Client;
+use hollodotme\FastCGI\Client;
+use hollodotme\FastCGI\Requests\GetRequest;
+use hollodotme\FastCGI\SocketConnections\NetworkSocket;
+use hollodotme\FastCGI\SocketConnections\UnixDomainSocket;
 use Illuminate\Config\Repository;
 use Illuminate\Support\Str;
 use JsonException;
@@ -57,27 +60,26 @@ class PhpFpmRecorder
     {
         [$sock, $url] = $this->fpmConnectionInfo();
 
-        $client = $this->createClient($sock, $url);
+        $response = $this->sendRequest($sock, $url);
 
-        $response = $client->request([
-            'REQUEST_METHOD'    => 'GET',
-            'SCRIPT_FILENAME'   => $url['path'],
-            'SCRIPT_NAME'       => $url['path'],
-            'QUERY_STRING'      => 'json',
-        ], stdin: false);
-
-        $parts = explode(PHP_EOL, $response);
-
-        return json_decode(end($parts), true, flags: JSON_THROW_ON_ERROR);
+        return json_decode( $response->getBody(), true, flags: JSON_THROW_ON_ERROR);
     }
 
-    private function createClient($sock, $url): Client
+    private function sendRequest($sock, $url)
     {
+        $client = new Client();
+
+        $request = new GetRequest($url['path'].'?json', '');
+
         if ($sock) {
-            return new Client("unix://$sock", -1);
+            $connection = new UnixDomainSocket($sock);
+
+            return $client->sendRequest($connection, $request);
         }
 
-        return new Client($url['host'], $url['port']);
+        $connection = new NetworkSocket($url['host'], $url['port']);
+
+        return $client->sendRequest($connection, $request);
     }
 
     private function fpmConnectionInfo(): array
